@@ -111,14 +111,21 @@ impl<const N: usize> fmt::Display for Grid<N> {
 mod test {
     use super::*;
 
+    macro_rules! test_default {
+        ($($n: expr),*) => {
+            $(assert_eq!(
+                Grid::<$n>::default(),
+                Grid {
+                    tiles: [[0; $n]; $n],
+                    score: 0
+                }
+            );
+        )*
+        };
+    }
+
     #[test]
     fn default() {
-        assert_eq!(
-            Grid::<4>::default(),
-            Grid {
-                tiles: [[0; 4]; 4],
-                score: 0
-            }
-        );
+        test_default!(3, 4, 5, 6, 7, 8, 9, 10);
     }
 }
