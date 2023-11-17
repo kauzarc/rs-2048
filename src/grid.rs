@@ -1,31 +1,21 @@
-use itertools::Itertools;
-use rand::{
-    self,
-    distributions::{self, Distribution},
-    seq::SliceRandom,
-};
-
+use anyhow::Result;
+use rand::{prelude::Distribution, seq::IteratorRandom};
 use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Grid<const N: usize> {
-    tiles: [[Option<Tile>; N]; N],
+    tiles: [[u32; N]; N],
     score: u32,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Tile {
-    pub value: u32,
-    pub position: TilePosition,
+#[derive(Debug, Error)]
+pub enum GridError {
+    #[error("The grid is full")]
+    GridFull,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct TilePosition {
-    pub i: usize,
-    pub j: usize,
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveDirection {
     Up,
     Down,
@@ -34,53 +24,61 @@ pub enum MoveDirection {
 }
 
 impl<const N: usize> Grid<N> {
-    pub fn is_full(&self) -> bool {
-        self.tiles.iter().flatten().all(|tile| tile.is_some())
-    }
+    pub fn random_spawn_tile(&mut self) -> Result<()> {
+        let mut rng = rand::thread_rng();
 
-    pub fn random_spawn_tile(&self) -> Option<Self> {
-        let mut result = self.clone();
-        let mut empty_tiles: Vec<(TilePosition, &mut Option<Tile>)> = result
+        let tile = self
             .tiles
             .iter_mut()
-            .enumerate()
-            .map(|(i, row)| {
-                row.iter_mut()
-                    .enumerate()
-                    .map(move |(j, tile)| (TilePosition { i, j }, tile))
-            })
             .flatten()
-            .filter(|(_, tile)| tile.is_none())
-            .collect();
+            .filter(|tile| **tile == 0)
+            .choose(&mut rng)
+            .ok_or(GridError::GridFull)?;
 
-        let mut rng = rand::thread_rng();
-        let (position, tile) = empty_tiles.choose_mut(&mut rng)?;
+        let dist = rand::distributions::Bernoulli::new(0.75)?;
+        *tile = if dist.sample(&mut rng) { 2 } else { 4 };
 
-        let dist = distributions::Bernoulli::new(0.75).ok()?;
-        **tile = Some(Tile {
-            value: if dist.sample(&mut rng) { 2 } else { 4 },
-            position: *position,
-        });
-
-        Some(result)
+        Ok(())
     }
 
-    pub fn move_tiles(&self, direction: MoveDirection) -> Option<Self> {
-        let mut _result = Self {
-            score: self.score,
-            ..Default::default()
-        };
-
+    pub fn move_tiles(&mut self, direction: MoveDirection) -> Result<()> {
         use MoveDirection::*;
+
         match direction {
             Up => todo!(),
             Down => todo!(),
             Left => todo!(),
-            Right => todo!(),
-        };
+            Right => {
+                for row in self.tiles.iter_mut() {
+                    for i in (0..N).rev() {
+                        if row[i] != 0 {
+                            for j in (i + 1)..N {
+                                if row[j] == row[i] {
+                                    row[i] = 0;
+                                    row[j] *= 2;
+                                } else if row[j] != 0 {
+                                    row[j - 1] = row[i];
+                                    row[i] = 0;
+                                    break;
+                                } else if j == N - 1 {
+                                    row[j] = row[i];
+                                    row[i] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
-    pub fn tiles(&self) -> &[[Option<Tile>; N]; N] {
+    pub fn is_full(&self) -> bool {
+        self.tiles.iter().flatten().all(|tile| *tile == 0)
+    }
+
+    pub fn tiles(&self) -> &[[u32; N]; N] {
         &self.tiles
     }
 
@@ -92,7 +90,7 @@ impl<const N: usize> Grid<N> {
 impl<const N: usize> Default for Grid<N> {
     fn default() -> Self {
         Self {
-            tiles: [[None; N]; N],
+            tiles: [[Default::default(); N]; N],
             score: Default::default(),
         }
     }
@@ -102,21 +100,25 @@ impl<const N: usize> fmt::Display for Grid<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "grid:")?;
         for row in self.tiles {
-            writeln!(
-                f,
-                "|{}|",
-                row.iter()
-                    .map(|tile| format!(
-                        "{:^5}",
-                        match tile {
-                            None => 0,
-                            Some(Tile { value, .. }) => *value,
-                        }
-                    ))
-                    .join("|")
-            )?;
+            writeln!(f, "|{}|", row.map(|tile| format!("{:^5}", tile)).join("|"))?;
         }
 
         write!(f, "score: {}", self.score)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn default() {
+        assert_eq!(
+            Grid::<4>::default(),
+            Grid {
+                tiles: [[0; 4]; 4],
+                score: 0
+            }
+        );
     }
 }
