@@ -79,7 +79,25 @@ impl<const N: usize> Grid<N> {
                 }
             }
             Left => todo!(),
-            Right => todo!(),
+            Right => {
+                for i in 0..N {
+                    let mut border = N - 1;
+                    for j in (0..N).rev() {
+                        if self.tiles[i][j] != 0 {
+                            while self.tiles[i][border] != 0
+                                && self.tiles[i][border] != self.tiles[i][j]
+                            {
+                                border -= 1;
+                            }
+
+                            if border != j {
+                                self.tiles[i][border] += self.tiles[i][j];
+                                self.tiles[i][j] = 0;
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -150,6 +168,23 @@ mod test {
             grid,
             Grid::<4> {
                 tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [0, 0, 0, 8], [2, 2, 4, 4]],
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn move_tiles_right() {
+        let mut grid = Grid::<4> {
+            tiles: [[2, 0, 0, 0], [0, 2, 2, 0], [2, 4, 8, 16], [16, 8, 4, 2]],
+            ..Default::default()
+        };
+
+        grid.move_tiles(MoveDirection::Right);
+        assert_eq!(
+            grid,
+            Grid::<4> {
+                tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [2, 4, 8, 16], [16, 8, 4, 2]],
                 ..Default::default()
             }
         );
