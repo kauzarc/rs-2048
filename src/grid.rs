@@ -23,6 +23,18 @@ pub enum MoveDirection {
     Right,
 }
 
+impl From<MoveDirection> for (i32, i32) {
+    fn from(value: MoveDirection) -> Self {
+        use MoveDirection::*;
+        match value {
+            Up => (-1, 0),
+            Down => (1, 0),
+            Left => (0, -1),
+            Right => (0, 1),
+        }
+    }
+}
+
 impl<const N: usize> Grid<N> {
     pub fn random_spawn_tile(&mut self) -> Result<()> {
         let mut rng = rand::thread_rng();
@@ -41,37 +53,34 @@ impl<const N: usize> Grid<N> {
         Ok(())
     }
 
-    pub fn move_tiles(&mut self, direction: MoveDirection) -> Result<()> {
-        use MoveDirection::*;
+    pub fn move_tiles(&mut self, direction: MoveDirection) {
+        // let (i_sign, j_sign) = direction.into();
 
+        use MoveDirection::*;
         match direction {
             Up => todo!(),
-            Down => todo!(),
-            Left => todo!(),
-            Right => {
-                for row in self.tiles.iter_mut() {
+            Down => {
+                for j in 0..N {
+                    let mut border = N - 1;
                     for i in (0..N).rev() {
-                        if row[i] != 0 {
-                            for j in (i + 1)..N {
-                                if row[j] == row[i] {
-                                    row[i] = 0;
-                                    row[j] *= 2;
-                                } else if row[j] != 0 {
-                                    row[j - 1] = row[i];
-                                    row[i] = 0;
-                                    break;
-                                } else if j == N - 1 {
-                                    row[j] = row[i];
-                                    row[i] = 0;
-                                }
+                        if self.tiles[i][j] != 0 {
+                            while self.tiles[border][j] != 0
+                                && self.tiles[border][j] != self.tiles[i][j]
+                            {
+                                border -= 1;
+                            }
+
+                            if border != i {
+                                self.tiles[border][j] += self.tiles[i][j];
+                                self.tiles[i][j] = 0;
                             }
                         }
                     }
                 }
             }
+            Left => todo!(),
+            Right => todo!(),
         }
-
-        Ok(())
     }
 
     pub fn is_full(&self) -> bool {
@@ -127,5 +136,22 @@ mod test {
     #[test]
     fn default() {
         test_default!(3, 4, 5, 6, 7, 8, 9, 10);
+    }
+
+    #[test]
+    fn move_tiles_down() {
+        let mut grid = Grid::<4> {
+            tiles: [[2, 0, 0, 2], [0, 2, 2, 4], [0, 0, 2, 8], [0, 0, 0, 4]],
+            ..Default::default()
+        };
+
+        grid.move_tiles(MoveDirection::Down);
+        assert_eq!(
+            grid,
+            Grid::<4> {
+                tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [0, 0, 0, 8], [2, 2, 4, 4]],
+                ..Default::default()
+            }
+        );
     }
 }
