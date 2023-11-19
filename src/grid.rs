@@ -73,6 +73,10 @@ impl<const N: usize> Grid<N> {
                             }
 
                             if border != i {
+                                if self.tiles[border][j] == self.tiles[i][j] {
+                                    self.score += 2 * self.tiles[i][j];
+                                }
+
                                 self.tiles[border][j] += self.tiles[i][j];
                                 self.tiles[i][j] = 0;
                             }
@@ -92,6 +96,10 @@ impl<const N: usize> Grid<N> {
                             }
 
                             if border != i {
+                                if self.tiles[border][j] == self.tiles[i][j] {
+                                    self.score += 2 * self.tiles[i][j];
+                                }
+
                                 self.tiles[border][j] += self.tiles[i][j];
                                 self.tiles[i][j] = 0;
                             }
@@ -101,7 +109,7 @@ impl<const N: usize> Grid<N> {
             }
             Left => {
                 for i in 0..N {
-                    let mut border = N - 1;
+                    let mut border = 0;
                     for j in 0..N {
                         if self.tiles[i][j] != 0 {
                             while self.tiles[i][border] != 0
@@ -111,6 +119,10 @@ impl<const N: usize> Grid<N> {
                             }
 
                             if border != j {
+                                if self.tiles[i][border] == self.tiles[i][j] {
+                                    self.score += 2 * self.tiles[i][j];
+                                }
+
                                 self.tiles[i][border] += self.tiles[i][j];
                                 self.tiles[i][j] = 0;
                             }
@@ -130,6 +142,10 @@ impl<const N: usize> Grid<N> {
                             }
 
                             if border != j {
+                                if self.tiles[i][border] == self.tiles[i][j] {
+                                    self.score += 2 * self.tiles[i][j];
+                                }
+
                                 self.tiles[i][border] += self.tiles[i][j];
                                 self.tiles[i][j] = 0;
                             }
@@ -143,7 +159,7 @@ impl<const N: usize> Grid<N> {
     pub fn rotate_90_deg(&mut self, n_rotation: i32) {
         let tiles = self.tiles;
 
-        match n_rotation % 4 {
+        match n_rotation.rem_euclid(4) {
             0 => (),
             1 => {
                 for (i, j) in grid_coord_iterator::<N>() {
@@ -290,27 +306,31 @@ mod test {
 
     const GRID_AFTER_MOVE_RIGHT: Grid<4> = Grid {
         tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [2, 4, 8, 16], [16, 8, 4, 2]],
-        score: 0,
+        score: 4,
     };
 
     #[test]
-    fn move_tiles_up() {}
+    fn move_tiles_up() {
+        let mut grid = GRID_BEFORE_MOVE.clone();
+        grid.rotate_90_deg(1);
+        grid.move_tiles(MoveDirection::Up);
+
+        let mut result = GRID_AFTER_MOVE_RIGHT.clone();
+        result.rotate_90_deg(1);
+
+        assert_eq!(grid, result);
+    }
 
     #[test]
     fn move_tiles_down() {
-        let mut grid = Grid::<4> {
-            tiles: [[2, 0, 0, 2], [0, 2, 2, 4], [0, 0, 2, 8], [0, 0, 0, 4]],
-            ..Default::default()
-        };
-
+        let mut grid = GRID_BEFORE_MOVE.clone();
+        grid.rotate_90_deg(-1);
         grid.move_tiles(MoveDirection::Down);
-        assert_eq!(
-            grid,
-            Grid::<4> {
-                tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [0, 0, 0, 8], [2, 2, 4, 4]],
-                ..Default::default()
-            }
-        );
+
+        let mut result = GRID_AFTER_MOVE_RIGHT.clone();
+        result.rotate_90_deg(-1);
+
+        assert_eq!(grid, result);
     }
 
     #[test]
@@ -319,6 +339,18 @@ mod test {
         grid.move_tiles(MoveDirection::Right);
 
         assert_eq!(grid, GRID_AFTER_MOVE_RIGHT);
+    }
+
+    #[test]
+    fn move_tiles_left() {
+        let mut grid = GRID_BEFORE_MOVE.clone();
+        grid.rotate_90_deg(2);
+        grid.move_tiles(MoveDirection::Left);
+
+        let mut result = GRID_AFTER_MOVE_RIGHT.clone();
+        result.rotate_90_deg(2);
+
+        assert_eq!(grid, result);
     }
 
     #[test]
