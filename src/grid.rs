@@ -253,6 +253,41 @@ mod test {
     }
 
     #[test]
+    fn random_spawn_tile() -> anyhow::Result<()> {
+        let mut grid = Grid::<4>::default();
+        grid.random_spawn_tile()?;
+
+        assert_eq!(
+            grid.tiles
+                .iter()
+                .flatten()
+                .filter(|tile| **tile != 0)
+                .count(),
+            1
+        );
+
+        let tile_value = *grid
+            .tiles
+            .iter()
+            .flatten()
+            .filter(|tile| **tile != 0)
+            .next()
+            .expect("exist");
+        assert!(tile_value == 2 || tile_value == 4);
+
+        let mut grid = Grid {
+            tiles: [[2; 4]; 4],
+            ..Default::default()
+        };
+
+        if let Ok(()) = grid.random_spawn_tile() {
+            panic!("should fail");
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn rotate() {
         let mut grids = vec![
             Grid {
