@@ -1,4 +1,5 @@
 use anyhow::Result;
+use itertools::Itertools;
 use rand::{prelude::Distribution, seq::IteratorRandom};
 use std::fmt;
 use thiserror::Error;
@@ -105,6 +106,22 @@ impl<const N: usize> Grid<N> {
         self.tiles.iter().flatten().all(|tile| *tile == 0)
     }
 
+    pub fn can_move(&self, direction: MoveDirection) -> bool {
+        use MoveDirection::*;
+        match direction {
+            Up => todo!(),
+            Down => (0..N)
+                .map(|j| (0..N).map(move |i| self.tiles[i][j]))
+                .any(|column| {
+                    column.tuple_windows().any(|pair: (u32, u32)| {
+                        (pair.0 != 0 && pair.1 == 0) || (pair.0 != 0 && pair.0 == pair.1)
+                    })
+                }),
+            Left => todo!(),
+            Right => todo!(),
+        }
+    }
+
     pub fn tiles(&self) -> &[[u32; N]; N] {
         &self.tiles
     }
@@ -188,5 +205,32 @@ mod test {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn can_move_down() {
+        assert!(!Grid {
+            tiles: [[0, 0], [0, 0]],
+            ..Default::default()
+        }
+        .can_move(MoveDirection::Down));
+
+        assert!(Grid {
+            tiles: [[1, 0], [0, 0]],
+            ..Default::default()
+        }
+        .can_move(MoveDirection::Down));
+
+        assert!(Grid {
+            tiles: [[0, 0, 0], [0, 0, 2], [0, 0, 2]],
+            ..Default::default()
+        }
+        .can_move(MoveDirection::Down));
+
+        assert!(!Grid {
+            tiles: [[0, 2, 0], [0, 4, 0], [0, 8, 0]],
+            ..Default::default()
+        }
+        .can_move(MoveDirection::Down));
     }
 }
