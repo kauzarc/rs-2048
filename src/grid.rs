@@ -36,6 +36,10 @@ impl From<MoveDirection> for (i32, i32) {
     }
 }
 
+pub fn grid_coord_iterator<const N: usize>() -> impl Iterator<Item = (usize, usize)> {
+    (0..N).map(|i| (0..N).map(move |j| (i, j))).flatten()
+}
+
 impl<const N: usize> Grid<N> {
     pub fn random_spawn_tile(&mut self) -> Result<()> {
         let mut rng = rand::thread_rng();
@@ -55,11 +59,27 @@ impl<const N: usize> Grid<N> {
     }
 
     pub fn move_tiles(&mut self, direction: MoveDirection) {
-        // let (i_sign, j_sign) = direction.into();
-
         use MoveDirection::*;
         match direction {
-            Up => todo!(),
+            Up => {
+                for j in 0..N {
+                    let mut border = 0;
+                    for i in 0..N {
+                        if self.tiles[i][j] != 0 {
+                            while self.tiles[border][j] != 0
+                                && self.tiles[border][j] != self.tiles[i][j]
+                            {
+                                border += 1;
+                            }
+
+                            if border != i {
+                                self.tiles[border][j] += self.tiles[i][j];
+                                self.tiles[i][j] = 0;
+                            }
+                        }
+                    }
+                }
+            }
             Down => {
                 for j in 0..N {
                     let mut border = N - 1;
@@ -79,7 +99,25 @@ impl<const N: usize> Grid<N> {
                     }
                 }
             }
-            Left => todo!(),
+            Left => {
+                for i in 0..N {
+                    let mut border = N - 1;
+                    for j in 0..N {
+                        if self.tiles[i][j] != 0 {
+                            while self.tiles[i][border] != 0
+                                && self.tiles[i][border] != self.tiles[i][j]
+                            {
+                                border += 1;
+                            }
+
+                            if border != j {
+                                self.tiles[i][border] += self.tiles[i][j];
+                                self.tiles[i][j] = 0;
+                            }
+                        }
+                    }
+                }
+            }
             Right => {
                 for i in 0..N {
                     let mut border = N - 1;
@@ -99,6 +137,31 @@ impl<const N: usize> Grid<N> {
                     }
                 }
             }
+        }
+    }
+
+    pub fn rotate_90_deg(&mut self, n_rotation: i32) {
+        let tiles = self.tiles;
+
+        match n_rotation % 4 {
+            0 => (),
+            1 => {
+                for (i, j) in grid_coord_iterator::<N>() {
+                    self.tiles[i][j] = tiles[j][N - i - 1];
+                }
+            }
+            2 => {
+                for (i, j) in grid_coord_iterator::<N>() {
+                    self.tiles[i][j] = tiles[N - i - 1][N - j - 1];
+                }
+            }
+            3 => {
+                for (i, j) in grid_coord_iterator::<N>() {
+                    self.tiles[i][j] = tiles[N - j - 1][i];
+                }
+            }
+
+            _ => panic!("unreachable"),
         }
     }
 
@@ -174,6 +237,66 @@ mod test {
     }
 
     #[test]
+    fn rotate() {
+        let mut grids = vec![
+            Grid {
+                tiles: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                ..Default::default()
+            };
+            4
+        ];
+
+        for (n_rotation, grid) in grids.iter_mut().enumerate() {
+            grid.rotate_90_deg(n_rotation.try_into().expect("value fit"));
+        }
+
+        assert_eq!(
+            grids[0],
+            Grid {
+                tiles: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                ..Default::default()
+            }
+        );
+
+        assert_eq!(
+            grids[1],
+            Grid {
+                tiles: [[3, 6, 9], [2, 5, 8], [1, 4, 7]],
+                ..Default::default()
+            }
+        );
+
+        assert_eq!(
+            grids[2],
+            Grid {
+                tiles: [[9, 8, 7], [6, 5, 4], [3, 2, 1]],
+                ..Default::default()
+            }
+        );
+
+        assert_eq!(
+            grids[3],
+            Grid {
+                tiles: [[7, 4, 1], [8, 5, 2], [9, 6, 3]],
+                ..Default::default()
+            }
+        );
+    }
+
+    const GRID_BEFORE_MOVE: Grid<4> = Grid {
+        tiles: [[2, 0, 0, 0], [0, 2, 2, 0], [2, 4, 8, 16], [16, 8, 4, 2]],
+        score: 0,
+    };
+
+    const GRID_AFTER_MOVE_RIGHT: Grid<4> = Grid {
+        tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [2, 4, 8, 16], [16, 8, 4, 2]],
+        score: 0,
+    };
+
+    #[test]
+    fn move_tiles_up() {}
+
+    #[test]
     fn move_tiles_down() {
         let mut grid = Grid::<4> {
             tiles: [[2, 0, 0, 2], [0, 2, 2, 4], [0, 0, 2, 8], [0, 0, 0, 4]],
@@ -192,19 +315,10 @@ mod test {
 
     #[test]
     fn move_tiles_right() {
-        let mut grid = Grid::<4> {
-            tiles: [[2, 0, 0, 0], [0, 2, 2, 0], [2, 4, 8, 16], [16, 8, 4, 2]],
-            ..Default::default()
-        };
-
+        let mut grid = GRID_BEFORE_MOVE.clone();
         grid.move_tiles(MoveDirection::Right);
-        assert_eq!(
-            grid,
-            Grid::<4> {
-                tiles: [[0, 0, 0, 2], [0, 0, 0, 4], [2, 4, 8, 16], [16, 8, 4, 2]],
-                ..Default::default()
-            }
-        );
+
+        assert_eq!(grid, GRID_AFTER_MOVE_RIGHT);
     }
 
     #[test]
