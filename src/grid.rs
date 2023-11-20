@@ -24,15 +24,10 @@ pub enum MoveDirection {
     Right,
 }
 
-impl From<MoveDirection> for (i32, i32) {
-    fn from(value: MoveDirection) -> Self {
+impl MoveDirection {
+    pub fn iterator() -> impl Iterator<Item = Self> {
         use MoveDirection::*;
-        match value {
-            Up => (-1, 0),
-            Down => (1, 0),
-            Left => (0, -1),
-            Right => (0, 1),
-        }
+        [Up, Down, Left, Right].iter().copied()
     }
 }
 
@@ -199,6 +194,10 @@ impl<const N: usize> Grid<N> {
             Left => todo!(),
             Right => todo!(),
         }
+    }
+
+    pub fn game_over(&self) -> bool {
+        MoveDirection::iterator().all(|direction| !self.can_move(direction))
     }
 
     pub fn tiles(&self) -> &[[u32; N]; N] {
